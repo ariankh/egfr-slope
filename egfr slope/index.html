@@ -44,47 +44,27 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-12 w-12 mx-auto mb-4 opacity-50"><rect width="16" height="20" x="4" y="2" rx="2" /><line x1="8" x2="16" y1="6" y2="6" /><line x1="16" x2="16" y1="14" y2="18" /><line x1="16" x2="12" y1="14" y2="14" /><line x1="12" x2="12" y1="14" y2="18" /><line x1="8" x2="8" y1="10" y2="18" /></svg>
         );
 
-        // --- The main React component, updated with new data ---
+        // --- The main React component ---
         const GFRSlopeCalculator = () => {
             const [patientData, setPatientData] = React.useState({
-                age: '',
-                sex: 'female',
-                race: 'white',
-                baselineGFR: '',
-                followUpGFR: '',
-                timeInterval: '',
-                measurementType: 'total', // total or chronic
-                studySize: 'large', // large, modest, or infinite
-                acuteEffectGFR: '', // for chronic slope calculation
-                populationPreference: 'auto' // auto, western, asian
+                age: '', sex: 'female', race: 'white', baselineGFR: '', followUpGFR: '', timeInterval: '',
+                measurementType: 'total', studySize: 'large', acuteEffectGFR: '', populationPreference: 'auto'
             });
 
             const [results, setResults] = React.useState(null);
             const [errors, setErrors] = React.useState({});
-
+            
             const getCKDStage = (gfr) => {
-                if (gfr >= 90) return '1';
-                if (gfr >= 60) return '2';
-                if (gfr >= 45) return '3a';
-                if (gfr >= 30) return '3b';
-                if (gfr >= 15) return '4';
-                return '5';
+                if (gfr >= 90) return '1'; if (gfr >= 60) return '2'; if (gfr >= 45) return '3a';
+                if (gfr >= 30) return '3b'; if (gfr >= 15) return '4'; return '5';
             };
 
             const validateInputs = () => {
                 const newErrors = {};
-                if (!patientData.baselineGFR || patientData.baselineGFR < 5 || patientData.baselineGFR > 150) {
-                    newErrors.baselineGFR = 'Baseline GFR must be between 5-150 ml/min/1.73m²';
-                }
-                if (!patientData.followUpGFR || patientData.followUpGFR < 5 || patientData.followUpGFR > 150) {
-                    newErrors.followUpGFR = 'Follow-up GFR must be between 5-150 ml/min/1.73m²';
-                }
-                if (!patientData.timeInterval || patientData.timeInterval < 0.5 || patientData.timeInterval > 5) {
-                    newErrors.timeInterval = 'Time interval must be between 0.5-5 years';
-                }
-                if (patientData.measurementType === 'chronic' && (!patientData.acuteEffectGFR || patientData.acuteEffectGFR < 5 || patientData.acuteEffectGFR > 150)) {
-                    newErrors.acuteEffectGFR = 'GFR at 3 months required for chronic slope calculation';
-                }
+                if (!patientData.baselineGFR || patientData.baselineGFR < 5 || patientData.baselineGFR > 150) newErrors.baselineGFR = 'Baseline GFR must be between 5-150 ml/min/1.73m²';
+                if (!patientData.followUpGFR || patientData.followUpGFR < 5 || patientData.followUpGFR > 150) newErrors.followUpGFR = 'Follow-up GFR must be between 5-150 ml/min/1.73m²';
+                if (!patientData.timeInterval || patientData.timeInterval < 0.5 || patientData.timeInterval > 5) newErrors.timeInterval = 'Time interval must be between 0.5-5 years';
+                if (patientData.measurementType === 'chronic' && (!patientData.acuteEffectGFR || patientData.acuteEffectGFR < 5 || patientData.acuteEffectGFR > 150)) newErrors.acuteEffectGFR = 'GFR at 3 months required for chronic slope calculation';
                 setErrors(newErrors);
                 return Object.keys(newErrors).length === 0;
             };
@@ -96,8 +76,7 @@
                 const followUp = parseFloat(patientData.followUpGFR);
                 const timeYears = parseFloat(patientData.timeInterval);
                 
-                let gfrSlope;
-                let slopeType;
+                let gfrSlope, slopeType;
 
                 if (patientData.measurementType === 'total') {
                     gfrSlope = (followUp - baseline) / timeYears;
@@ -110,31 +89,22 @@
                 }
 
                 const interpretSlope = (slope, type, studySize, timeInterval, baselineGFR, race, preference) => {
-                    let clinicalBenefit, probability, riskLevel, thresholdSource, populationData, selectionReason, threshold;
-                    
-                    // **IMPROVED**: Stage-specific thresholds from CKD-JAC Study (Imaizumi et al., 2025) for a 1-year evaluation period.
-                    // This represents the eGFR slope difference associated with a 20% lower risk (HR 0.8) of kidney failure.
+                    let clinicalBenefit, riskLevel, thresholdSource, populationData, selectionReason, threshold;
                     const asianThresholds = {
-                        '3a': { threshold: 1.91, source: 'CKD-JAC Study (Stage 3)' },
-                        '3b': { threshold: 1.91, source: 'CKD-JAC Study (Stage 3)' },
-                        '4': { threshold: 1.12, source: 'CKD-JAC Study (Stage 4)' },
-                        '5': { threshold: 1.06, source: 'CKD-JAC Study (Stage 5)' }
+                        '3a': { threshold: 1.91, source: 'CKD-JAC Study (Stage 3)' }, '3b': { threshold: 1.91, source: 'CKD-JAC Study (Stage 3)' },
+                        '4': { threshold: 1.12, source: 'CKD-JAC Study (Stage 4)' }, '5': { threshold: 1.06, source: 'CKD-JAC Study (Stage 5)' }
                     };
-
-                    // General thresholds from Inker et al. (2023 Meta-Analysis)
                     const westernThresholds = {
                         'total_3yr': { large: 0.48, modest: 0.74, infinite: 0.24, source: 'Inker et al. (3-year)' },
                         'total_2yr': { large: 0.54, modest: 0.72, infinite: 0.42, source: 'Inker et al. (2-year)' },
                         'total_1yr': { large: 1.32, modest: 1.31, infinite: 1.26, source: 'Inker et al. (1-year)' },
                         'chronic': { large: 0.62, modest: 0.85, infinite: 0.37, source: 'Inker et al. (Chronic)' }
                     };
-
                     const ckdStage = getCKDStage(baselineGFR);
 
-                    // **IMPROVED**: Auto-selection logic now considers CKD stage for Asian populations.
                     if (preference === 'auto') {
                         if (race === 'other' && (ckdStage === '3a' || ckdStage === '3b' || ckdStage === '4' || ckdStage === '5')) {
-                            preference = 'asian'; // Switch to Asian logic
+                            preference = 'asian';
                             selectionReason = `Auto-selected Asian dataset based on ethnicity and CKD Stage ${ckdStage}.`;
                         } else {
                             preference = 'western';
@@ -150,7 +120,6 @@
                             thresholdSource = stageData.source;
                             if(!selectionReason) selectionReason = `User selected Asian dataset. Applied threshold for CKD Stage ${ckdStage}.`;
                         } else {
-                            // Fallback for stages 1-2 in Asian population
                             let key = timeInterval >= 1.5 ? 'total_2yr' : 'total_1yr';
                             threshold = westernThresholds[key][studySize];
                             thresholdSource = `CKD-JAC data not available for Stage ${ckdStage}, using Western fallback: ${westernThresholds[key].source}`;
@@ -163,30 +132,22 @@
                         if(!selectionReason) selectionReason = 'User selected Western dataset.';
                     }
                     
-                    // **IMPROVED**: Interpretation is now a direct comparison to the evidence-based threshold.
-                    // A positive slope change (deceleration of decline) is beneficial.
                     if (slope >= threshold) {
-                        clinicalBenefit = 'High Likelihood of Clinical Benefit';
-                        riskLevel = 'low';
+                        clinicalBenefit = 'High Likelihood of Clinical Benefit'; riskLevel = 'low';
                     } else if (slope >= threshold * 0.75) {
-                        clinicalBenefit = 'Moderate Likelihood of Clinical Benefit';
-                        riskLevel = 'moderate';
+                        clinicalBenefit = 'Moderate Likelihood of Clinical Benefit'; riskLevel = 'moderate';
                     } else if (slope >= threshold * 0.5) {
-                        clinicalBenefit = 'Possible Clinical Benefit';
-                        riskLevel = 'moderate';
+                        clinicalBenefit = 'Possible Clinical Benefit'; riskLevel = 'moderate';
                     } else {
-                        clinicalBenefit = 'Uncertain or Minimal Clinical Benefit';
-                        riskLevel = 'high';
+                        clinicalBenefit = 'Uncertain or Minimal Clinical Benefit'; riskLevel = 'high';
                     }
-
                     return { clinicalBenefit, riskLevel, threshold, thresholdSource, populationData, selectionReason };
                 };
 
                 const interpretation = interpretSlope(gfrSlope, patientData.measurementType, patientData.studySize, timeYears, baseline, patientData.race, patientData.populationPreference);
 
                 const getPrognosisContext = (slope, baselineGFR) => {
-                    const annualDecline = -slope;
-                    let progressionRate = 'Stable or Improving';
+                    const annualDecline = -slope; let progressionRate = 'Stable or Improving';
                     if (annualDecline > 5) progressionRate = 'Rapid Progression';
                     else if (annualDecline > 3) progressionRate = 'Moderate Progression';
                     else if (annualDecline > 1) progressionRate = 'Slow Progression';
@@ -195,240 +156,101 @@
                 };
 
                 const prognosis = getPrognosisContext(gfrSlope, baseline);
-
                 setResults({
-                    gfrSlope: gfrSlope.toFixed(2),
-                    slopeType,
-                    interpretation,
-                    prognosis,
+                    gfrSlope: gfrSlope.toFixed(2), slopeType, interpretation, prognosis,
                     patientContext: {
-                        baselineGFR: baseline,
-                        currentGFR: followUp,
-                        timeInterval: timeYears,
-                        ageGroup: patientData.age < 65 ? 'Younger adult' : 'Older adult',
-                        ckdStage: getCKDStage(baseline)
+                        baselineGFR: baseline, currentGFR: followUp, timeInterval: timeYears,
+                        ageGroup: patientData.age < 65 ? 'Younger adult' : 'Older adult', ckdStage: getCKDStage(baseline)
                     }
                 });
             };
 
-            const getRiskColor = (level) => {
-                return {
-                    low: 'text-green-700 bg-green-50 border-green-300',
-                    moderate: 'text-yellow-700 bg-yellow-50 border-yellow-300',
-                    high: 'text-red-700 bg-red-50 border-red-300',
-                }[level] || 'text-gray-700 bg-gray-50 border-gray-300';
-            };
-
-            const getRiskIcon = (level) => {
-                return {
-                    low: <CheckCircleIcon />,
-                    moderate: <AlertTriangleIcon />,
-                    high: <AlertTriangleIcon />,
-                }[level] || <InfoIcon />;
-            };
+            const getRiskColor = (level) => ({low: 'text-green-700 bg-green-50 border-green-300', moderate: 'text-yellow-700 bg-yellow-50 border-yellow-300', high: 'text-red-700 bg-red-50 border-red-300'}[level] || 'text-gray-700 bg-gray-50 border-gray-300');
+            const getRiskIcon = (level) => ({low: <CheckCircleIcon />, moderate: <AlertTriangleIcon />, high: <AlertTriangleIcon />}[level] || <InfoIcon />);
             
             const handleExampleClick = (data) => {
                 setPatientData(data);
-                // Use a timeout to ensure state update is processed before calculating
-                setTimeout(() => {
-                    // This needs to be wrapped in another function to access the updated state
-                    // A direct call to calculateResults() here would use the old state.
-                    // The best way is to trigger a re-render and then calculate.
-                    // For this simple case, we can manually trigger the calculation logic
-                    // with the new data.
-                    const tempErrors = {};
-                    if (!data.baselineGFR || data.baselineGFR < 5 || data.baselineGFR > 150) tempErrors.baselineGFR = 'Error';
-                    if (!data.followUpGFR || data.followUpGFR < 5 || data.followUpGFR > 150) tempErrors.followUpGFR = 'Error';
-                    if (!data.timeInterval || data.timeInterval < 0.5 || data.timeInterval > 5) tempErrors.timeInterval = 'Error';
-                    if(Object.keys(tempErrors).length === 0) {
-                         // Re-run calculation logic directly for immediate feedback
-                         const baseline = parseFloat(data.baselineGFR);
-                         const followUp = parseFloat(data.followUpGFR);
-                         const timeYears = parseFloat(data.timeInterval);
-                         const gfrSlope = (followUp - baseline) / timeYears;
-                         // The rest of the calculation will be triggered by the main function call
-                         // but this ensures the example data is processed immediately
-                         calculateResults();
-                    }
-                }, 100); // A small delay to allow state to update before calculation
+                setTimeout(calculateResults, 100);
             };
-
 
             return (
                 <div className="max-w-4xl mx-auto p-4 sm:p-6 bg-white shadow-lg rounded-lg my-8">
-                <div className="mb-8">
-                    <div className="flex items-center gap-3 mb-4">
-                    <CalculatorIcon />
-                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Validated GFR Slope Assessment Tool</h1>
+                    {/* Header Section */}
+                    <div className="mb-8">
+                        <div className="flex items-center gap-3 mb-4">
+                            <CalculatorIcon />
+                            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Validated GFR Slope Assessment Tool</h1>
+                        </div>
+                        <p className="text-gray-600 mb-2">
+                            An interactive tool for interpreting eGFR slope changes based on evidence from major clinical studies.
+                        </p>
+                        <div className="text-sm text-blue-700 bg-blue-50 p-3 rounded-lg border border-blue-200">
+                            <strong>Clinical Evidence:</strong> This tool incorporates stage-specific thresholds from the CKD-JAC study for Asian populations and general thresholds from the Inker et al. (2023) meta-analysis.
+                        </div>
                     </div>
-                    <p className="text-gray-600 mb-2">
-                    An interactive tool incorporating evidence from the Inker et al. (2023) meta-analysis and the CKD-JAC study (2025).
-                    </p>
-                    <div className="text-sm text-blue-700 bg-blue-50 p-3 rounded-lg border border-blue-200">
-                    <strong>Updated Clinical Evidence:</strong> This tool now includes stage-specific thresholds from the CKD-JAC study for Asian populations, improving precision for patients with advanced CKD.
-                    </div>
-                </div>
 
-                <div className="grid md:grid-cols-2 gap-8">
-                    <div className="space-y-6">
-                        <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                            <InfoIcon />
-                            Patient Information
-                        </h2>
-                        {/* Input fields are unchanged */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Age</label>
-                                <input type="number" value={patientData.age} onChange={(e) => setPatientData(prev => ({...prev, age: e.target.value}))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Years" />
+                    <div className="grid md:grid-cols-2 gap-8">
+                        {/* Input Form Section */}
+                        <div className="space-y-6">
+                            <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2"><InfoIcon />Patient Information</h2>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div><label className="block text-sm font-medium text-gray-700 mb-1">Age</label><input type="number" value={patientData.age} onChange={(e) => setPatientData(prev => ({...prev, age: e.target.value}))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Years" /></div>
+                                <div><label className="block text-sm font-medium text-gray-700 mb-1">Sex</label><select value={patientData.sex} onChange={(e) => setPatientData(prev => ({...prev, sex: e.target.value}))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"><option value="female">Female</option><option value="male">Male</option></select></div>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Sex</label>
-                                <select value={patientData.sex} onChange={(e) => setPatientData(prev => ({...prev, sex: e.target.value}))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                    <option value="female">Female</option>
-                                    <option value="male">Male</option>
-                                </select>
+                            <div><label className="block text-sm font-medium text-gray-700 mb-1">Race/Ethnicity</label><select value={patientData.race} onChange={(e) => setPatientData(prev => ({...prev, race: e.target.value}))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"><option value="white">White/Caucasian</option><option value="black">Black/African American</option><option value="other">Asian/Other</option></select><p className="text-xs text-gray-500 mt-1">Used for automatic population-specific threshold selection.</p></div>
+                            <div><label className="block text-sm font-medium text-gray-700 mb-1">Population Dataset Preference</label><select value={patientData.populationPreference} onChange={(e) => setPatientData(prev => ({...prev, populationPreference: e.target.value}))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"><option value="auto">Auto (based on ethnicity & CKD stage)</option><option value="western">Western (Inker Meta-Analysis)</option><option value="asian">Asian (CKD-JAC Study)</option></select></div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div><label className="block text-sm font-medium text-gray-700 mb-1">Baseline GFR (ml/min/1.73m²)</label><input type="number" value={patientData.baselineGFR} onChange={(e) => setPatientData(prev => ({...prev, baselineGFR: e.target.value}))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., 28" />{errors.baselineGFR && <p className="text-red-600 text-sm mt-1">{errors.baselineGFR}</p>}</div>
+                                <div><label className="block text-sm font-medium text-gray-700 mb-1">Follow-up GFR (ml/min/1.73m²)</label><input type="number" value={patientData.followUpGFR} onChange={(e) => setPatientData(prev => ({...prev, followUpGFR: e.target.value}))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., 29.2" />{errors.followUpGFR && <p className="text-red-600 text-sm mt-1">{errors.followUpGFR}</p>}</div>
                             </div>
+                            <div><label className="block text-sm font-medium text-gray-700 mb-1">Time Interval (years)</label><input type="number" step="0.1" value={patientData.timeInterval} onChange={(e) => setPatientData(prev => ({...prev, timeInterval: e.target.value}))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., 1.0" />{errors.timeInterval && <p className="text-red-600 text-sm mt-1">{errors.timeInterval}</p>}</div>
+                            <div><label className="block text-sm font-medium text-gray-700 mb-1">Slope Type</label><select value={patientData.measurementType} onChange={(e) => setPatientData(prev => ({...prev, measurementType: e.target.value}))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"><option value="total">Total slope (from baseline)</option><option value="chronic">Chronic slope (from 3 months)</option></select></div>
+                            {patientData.measurementType === 'chronic' && (<div><label className="block text-sm font-medium text-gray-700 mb-1">GFR at 3 months (ml/min/1.73m²)</label><input type="number" value={patientData.acuteEffectGFR} onChange={(e) => setPatientData(prev => ({...prev, acuteEffectGFR: e.target.value}))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., 42" />{errors.acuteEffectGFR && <p className="text-red-600 text-sm mt-1">{errors.acuteEffectGFR}</p>}</div>)}
+                            <div><label className="block text-sm font-medium text-gray-700 mb-1">Study Size Context</label><select value={patientData.studySize} onChange={(e) => setPatientData(prev => ({...prev, studySize: e.target.value}))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"><option value="large">Large study (N~1900)</option><option value="modest">Modest study (N~720)</option><option value="infinite">Infinite sample size</option></select></div>
+                            <button onClick={calculateResults} className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 font-semibold text-lg">Calculate & Assess</button>
+                            <div className="pt-4 border-t"><h3 className="text-lg font-semibold text-gray-800 mb-3">Load Example Scenarios</h3><div className="grid grid-cols-1 sm:grid-cols-2 gap-2"><button onClick={() => handleExampleClick({ age: '62', sex: 'male', race: 'white', baselineGFR: '40', followUpGFR: '41.1', timeInterval: '2', measurementType: 'total', studySize: 'large', acuteEffectGFR: '', populationPreference: 'western' })} className="w-full bg-gray-200 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 text-sm">Western Example (2yr)</button><button onClick={() => handleExampleClick({ age: '65', sex: 'male', race: 'other', baselineGFR: '40', followUpGFR: '42', timeInterval: '1', measurementType: 'total', studySize: 'large', acuteEffectGFR: '', populationPreference: 'auto' })} className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm">Asian Stage 3 (Auto)</button><button onClick={() => handleExampleClick({ age: '68', sex: 'female', race: 'other', baselineGFR: '28', followUpGFR: '29.2', timeInterval: '1', measurementType: 'total', studySize: 'large', acuteEffectGFR: '', populationPreference: 'auto' })} className="w-full bg-orange-600 text-white py-2 px-4 rounded-md hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm">Asian Stage 4 (Auto)</button><button onClick={() => handleExampleClick({ age: '70', sex: 'male', race: 'other', baselineGFR: '14', followUpGFR: '15.1', timeInterval: '1', measurementType: 'total', studySize: 'large', acuteEffectGFR: '', populationPreference: 'auto' })} className="w-full bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 text-sm">Asian Stage 5 (Auto)</button></div></div>
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Race/Ethnicity</label>
-                            <select value={patientData.race} onChange={(e) => setPatientData(prev => ({...prev, race: e.target.value}))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <option value="white">White/Caucasian</option>
-                                <option value="black">Black/African American</option>
-                                <option value="other">Asian/Other</option>
-                            </select>
-                            <p className="text-xs text-gray-500 mt-1">Used for automatic population-specific threshold selection.</p>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Population Dataset Preference</label>
-                            <select value={patientData.populationPreference} onChange={(e) => setPatientData(prev => ({...prev, populationPreference: e.target.value}))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <option value="auto">Auto (based on ethnicity & CKD stage)</option>
-                                <option value="western">Western (Inker Meta-Analysis)</option>
-                                <option value="asian">Asian (CKD-JAC Study)</option>
-                            </select>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Baseline GFR (ml/min/1.73m²)</label>
-                                <input type="number" value={patientData.baselineGFR} onChange={(e) => setPatientData(prev => ({...prev, baselineGFR: e.target.value}))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., 28" />
-                                {errors.baselineGFR && <p className="text-red-600 text-sm mt-1">{errors.baselineGFR}</p>}
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Follow-up GFR (ml/min/1.73m²)</label>
-                                <input type="number" value={patientData.followUpGFR} onChange={(e) => setPatientData(prev => ({...prev, followUpGFR: e.target.value}))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., 29.2" />
-                                {errors.followUpGFR && <p className="text-red-600 text-sm mt-1">{errors.followUpGFR}</p>}
-                            </div>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Time Interval (years)</label>
-                            <input type="number" step="0.1" value={patientData.timeInterval} onChange={(e) => setPatientData(prev => ({...prev, timeInterval: e.target.value}))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., 1.0" />
-                            {errors.timeInterval && <p className="text-red-600 text-sm mt-1">{errors.timeInterval}</p>}
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Slope Type</label>
-                            <select value={patientData.measurementType} onChange={(e) => setPatientData(prev => ({...prev, measurementType: e.target.value}))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <option value="total">Total slope (from baseline)</option>
-                                <option value="chronic">Chronic slope (from 3 months)</option>
-                            </select>
-                        </div>
-                        {patientData.measurementType === 'chronic' && (
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">GFR at 3 months (ml/min/1.73m²)</label>
-                                <input type="number" value={patientData.acuteEffectGFR} onChange={(e) => setPatientData(prev => ({...prev, acuteEffectGFR: e.target.value}))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., 42" />
-                                {errors.acuteEffectGFR && <p className="text-red-600 text-sm mt-1">{errors.acuteEffectGFR}</p>}
+
+                        {/* Results Section */}
+                        <div className="space-y-6">
+                        {results ? (
+                            <>
+                                <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2"><TrendingDownIcon />Clinical Assessment Results</h2>
+                                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                                    <h3 className="font-semibold text-gray-800 mb-3">GFR Slope Analysis</h3>
+                                    <div className="space-y-2 text-gray-700"><p><strong>Calculated Slope Change:</strong> <span className="text-xl font-mono text-blue-600">{results.gfrSlope}</span> ml/min/1.73m²/yr</p><p><strong>Baseline CKD Stage:</strong> <span className="font-semibold">Stage {results.patientContext.ckdStage}</span></p><p><strong>Progression Rate:</strong> <span className="font-semibold">{results.prognosis.progressionRate}</span></p></div>
+                                </div>
+                                <div className={`p-4 rounded-lg border ${getRiskColor(results.interpretation.riskLevel)}`}>
+                                    <div className="flex items-center gap-3 mb-3">{getRiskIcon(results.interpretation.riskLevel)}<h3 className="font-semibold text-lg">Clinical Benefit Prediction</h3></div>
+                                    <div className="space-y-2"><p><strong>Assessment:</strong> <span className="font-bold">{results.interpretation.clinicalBenefit}</span></p><p>This assessment is based on comparing the calculated slope change to a clinically meaningful threshold from trial data.</p><hr className="my-2"/><p className="text-sm"><strong>Threshold Applied:</strong> <span className="font-mono">{results.interpretation.threshold.toFixed(2)}</span> ml/min/1.73m²/yr</p></div>
+                                </div>
+                                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                    <h3 className="font-semibold text-blue-900 mb-3">Evidence Source & Prognosis</h3>
+                                    <div className="space-y-2 text-blue-800"><p><strong>Dataset Used:</strong> {results.interpretation.populationData?.name}</p><p><strong>Source:</strong> {results.interpretation.thresholdSource}</p><p className="text-xs"><strong>Reason:</strong> {results.interpretation.selectionReason}</p><hr className="my-2 border-blue-200"/>{typeof results.prognosis.yearsToESKD === 'number' ? (<p><strong>Est. Years to ESKD (if untreated):</strong> {results.prognosis.yearsToESKD.toFixed(1)} years</p>) : (<p><strong>Est. Years to ESKD:</strong> Not applicable (stable/improving)</p>)}</div>
+                                </div>
+                                
+                                {/* --- UPDATED Clinical Considerations Section --- */}
+                                <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                                    <h3 className="font-semibold text-yellow-900 mb-2">Clinical Considerations</h3>
+                                    <ul className="text-sm text-yellow-800 list-disc list-inside space-y-1">
+                                        <li>Results are based on population-level data and should support, not replace, clinical judgment.</li>
+                                        <li>The CKD-JAC study shows that clinically meaningful slope changes differ by CKD stage in Asian populations.</li>
+                                        <li>The CANPIONE study highlights that a longer pre-intervention observation period provides a more stable baseline slope.</li>
+                                        <li>Chronic slope (from 3 months) can be more reliable when significant acute hemodynamic effects are expected.</li>
+                                        <li>A 2024 meta-analysis by Sartore et al. confirmed that a steeper eGFR decline in T2DM is significantly associated with higher long-term risks for mortality, cardiovascular events, and ESKD.</li>
+                                    </ul>
+                                </div>
+
+                            </>
+                        ) : (
+                            <div className="text-center text-gray-500 py-12 px-6 bg-gray-50 rounded-lg border-2 border-dashed">
+                                <EmptyCalculatorIcon />
+                                <h2 className="text-xl font-semibold mt-4">Awaiting Input</h2>
+                                <p className="mt-1">Enter patient data on the left to calculate the GFR slope and assess clinical outcomes based on the latest evidence.</p>
                             </div>
                         )}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Study Size Context</label>
-                            <select value={patientData.studySize} onChange={(e) => setPatientData(prev => ({...prev, studySize: e.target.value}))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <option value="large">Large study (N~1900)</option>
-                                <option value="modest">Modest study (N~720)</option>
-                                <option value="infinite">Infinite sample size</option>
-                            </select>
-                        </div>
-
-                        <button onClick={calculateResults} className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 font-semibold text-lg">
-                            Calculate & Assess
-                        </button>
-                        
-                        {/* **IMPROVED**: Example buttons updated with CKD-JAC data */}
-                        <div className="pt-4 border-t">
-                            <h3 className="text-lg font-semibold text-gray-800 mb-3">Load Example Scenarios</h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                <button onClick={() => handleExampleClick({ age: '62', sex: 'male', race: 'white', baselineGFR: '40', followUpGFR: '41.1', timeInterval: '2', measurementType: 'total', studySize: 'large', acuteEffectGFR: '', populationPreference: 'western' })} className="w-full bg-gray-200 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 text-sm">Western Example (2yr)</button>
-                                <button onClick={() => handleExampleClick({ age: '65', sex: 'male', race: 'other', baselineGFR: '40', followUpGFR: '42', timeInterval: '1', measurementType: 'total', studySize: 'large', acuteEffectGFR: '', populationPreference: 'auto' })} className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm">Asian Stage 3 (Auto)</button>
-                                <button onClick={() => handleExampleClick({ age: '68', sex: 'female', race: 'other', baselineGFR: '28', followUpGFR: '29.2', timeInterval: '1', measurementType: 'total', studySize: 'large', acuteEffectGFR: '', populationPreference: 'auto' })} className="w-full bg-orange-600 text-white py-2 px-4 rounded-md hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm">Asian Stage 4 (Auto)</button>
-                                <button onClick={() => handleExampleClick({ age: '70', sex: 'male', race: 'other', baselineGFR: '14', followUpGFR: '15.1', timeInterval: '1', measurementType: 'total', studySize: 'large', acuteEffectGFR: '', populationPreference: 'auto' })} className="w-full bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 text-sm">Asian Stage 5 (Auto)</button>
-                            </div>
                         </div>
                     </div>
-
-                    <div className="space-y-6">
-                    {results ? (
-                        <>
-                        <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                            <TrendingDownIcon />
-                            Clinical Assessment Results
-                        </h2>
-
-                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                            <h3 className="font-semibold text-gray-800 mb-3">GFR Slope Analysis</h3>
-                            <div className="space-y-2 text-gray-700">
-                            <p><strong>Calculated Slope Change:</strong> <span className="text-xl font-mono text-blue-600">{results.gfrSlope}</span> ml/min/1.73m²/yr</p>
-                            <p><strong>Baseline CKD Stage:</strong> <span className="font-semibold">Stage {results.patientContext.ckdStage}</span></p>
-                            <p><strong>Progression Rate:</strong> <span className="font-semibold">{results.prognosis.progressionRate}</span></p>
-                            </div>
-                        </div>
-                        
-                        {/* **IMPROVED**: Clearer results display */}
-                        <div className={`p-4 rounded-lg border ${getRiskColor(results.interpretation.riskLevel)}`}>
-                            <div className="flex items-center gap-3 mb-3">
-                            {getRiskIcon(results.interpretation.riskLevel)}
-                            <h3 className="font-semibold text-lg">Clinical Benefit Prediction</h3>
-                            </div>
-                            <div className="space-y-2">
-                                <p><strong>Assessment:</strong> <span className="font-bold">{results.interpretation.clinicalBenefit}</span></p>
-                                <p>This assessment is based on comparing the calculated slope change to a clinically meaningful threshold from trial data.</p>
-                                <hr className="my-2"/>
-                                <p className="text-sm">
-                                    <strong>Threshold Applied:</strong> <span className="font-mono">{results.interpretation.threshold.toFixed(2)}</span> ml/min/1.73m²/yr
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                            <h3 className="font-semibold text-blue-900 mb-3">Evidence Source & Prognosis</h3>
-                            <div className="space-y-2 text-blue-800">
-                            <p><strong>Dataset Used:</strong> {results.interpretation.populationData?.name}</p>
-                            <p><strong>Source:</strong> {results.interpretation.thresholdSource}</p>
-                            <p className="text-xs"><strong>Reason:</strong> {results.interpretation.selectionReason}</p>
-                            <hr className="my-2 border-blue-200"/>
-                            {typeof results.prognosis.yearsToESKD === 'number' ? (
-                                <p><strong>Est. Years to ESKD (if untreated):</strong> {results.prognosis.yearsToESKD.toFixed(1)} years</p>
-                            ) : (
-                                <p><strong>Est. Years to ESKD:</strong> Not applicable (stable/improving)</p>
-                            )}
-                            </div>
-                        </div>
-
-                        <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-                            <h3 className="font-semibold text-yellow-900 mb-2">Clinical Considerations</h3>
-                            <ul className="text-sm text-yellow-800 list-disc list-inside space-y-1">
-                                <li>Results are based on population-level data and should support, not replace, clinical judgment.</li>
-                                <li>The CKD-JAC study shows that clinically meaningful slope changes differ by CKD stage in Asian populations.</li>
-                                <li>The CANPIONE study highlights that a longer pre-intervention observation period provides a more stable baseline slope.</li>
-                                <li>Chronic slope (from 3 months) can be more reliable when significant acute hemodynamic effects are expected.</li>
-                            </ul>
-                        </div>
-                        </>
-                    ) : (
-                        <div className="text-center text-gray-500 py-12 px-6 bg-gray-50 rounded-lg border-2 border-dashed">
-                        <EmptyCalculatorIcon />
-                        <h2 className="text-xl font-semibold mt-4">Awaiting Input</h2>
-                        <p className="mt-1">Enter patient data to calculate the GFR slope and assess clinical outcomes based on the latest evidence.</p>
-                        </div>
-                    )}
-                    </div>
-                </div>
                 </div>
             );
         };

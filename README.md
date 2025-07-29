@@ -225,7 +225,7 @@ Interpretation: High clinical benefit probability
 ### Local Development
 ```bash
 # Clone repository
-git clone https://github.com/username/egfr-slope-tool.git
+git clone https://github.com/ariankh/egfr-slope.git
 cd egfr-slope-tool
 
 # Install dependencies
@@ -293,11 +293,11 @@ This tool is intended for research and clinical decision support. It should not 
 If you use this tool in research or clinical practice, please cite:
 
 ```bibtex
-@software{egfr_slope_tool_2024,
+@software{egfr_slope,
   title={eGFR Slope Clinical Assessment Tool},
-  author={[Author Names]},
-  year={2024},
-  url={https://github.com/username/egfr-slope-tool},
+  author={[A.H. Khoshchin]},
+  year={2025},
+  url={https://github.com/ariankh/egfr-slope},
   note={Implements Inker et al. (2019) and Imaizumi et al. (2025) methodologies}
 }
 ```

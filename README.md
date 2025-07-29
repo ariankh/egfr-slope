@@ -301,18 +301,6 @@ If you use this tool in research or clinical practice, please cite:
   note={Implements Inker et al. (2019) and Imaizumi et al. (2025) methodologies}
 }
 ```
-
-## 📞 Contact & Support
-
-- **Clinical Questions**: [clinical-support@example.com](mailto:clinical-support@example.com)
-- **Technical Issues**: [tech-support@example.com](mailto:tech-support@example.com)
-- **Research Collaboration**: [research@example.com](mailto:research@example.com)
-
-### Professional Networks
-- **Nephrology Community**: [LinkedIn Group](https://linkedin.com/groups/nephrology-egfr)
-- **Clinical Research**: [ResearchGate](https://researchgate.net/project/egfr-slope)
-- **Open Source**: [GitHub Discussions](https://github.com/username/egfr-slope-tool/discussions)
-
 ---
 
 **🏥 Made for the Global Nephrology Community**
